@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -257,28 +258,42 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case rebootPrompt:
 			switch msg.String() {
 			case "up", "k":
-				m.rebootCursor = 0
+				if m.rebootCursor > 0 {
+					m.rebootCursor--
+				}
 			case "down", "j":
-				m.rebootCursor = 1
+				if m.rebootCursor < 2 {
+					m.rebootCursor++
+				}
 			case "esc", "n":
 				m.phase = browse
 			case "enter", "y":
 				if msg.String() == "y" {
 					m.rebootCursor = 0
 				}
-				if m.rebootCursor == 1 {
+				if m.rebootCursor == 2 {
 					m.phase = browse
 					return m, nil
 				}
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				cmd := exec.CommandContext(ctx, "systemctl", "reboot")
-				output, err := cmd.CombinedOutput()
-				cancel()
-				if err != nil {
-					m.message = fmt.Sprintf("%s; reboot request failed: %v %s", m.message, err, strings.TrimSpace(string(output)))
-				} else {
-					return m, tea.Quit
+
+				action := "reboot"
+				if m.rebootCursor == 1 {
+					if IsSoftRebootAvailable() {
+						action = "soft-reboot"
+					}
 				}
+
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				cmd := exec.CommandContext(ctx, "systemctl", action)
+				output, err := cmd.CombinedOutput()
+				if err != nil {
+					m.message = fmt.Sprintf("%s; %s request failed: %v %s",
+						m.message, action, err, strings.TrimSpace(string(output)))
+					return m, nil
+				}
+				return m, tea.Quit
 			}
 		case deleteConfirm:
 			switch msg.String() {
@@ -546,7 +561,7 @@ func (m model) View() string {
 		body = fmt.Sprintf("Delete module %q (%s)?\n\nThis only removes the module definition. Existing themes are unchanged.\n\nEnter/y delete · n cancel", d.Name, d.Label)
 	case rebootPrompt:
 		body = "Theme applied. It is recommended to reboot after applying a theme.\n\n"
-		choices := []string{"Reboot now", "Reboot later"}
+		choices := []string{"Reboot fully now", "Soft-Reboot now", "Reboot later"}
 		for i, choice := range choices {
 			prefix := "  "
 			if m.rebootCursor == i {
@@ -687,4 +702,22 @@ func countSelected(values []bool) int {
 		}
 	}
 	return n
+}
+
+func IsSoftRebootAvailable() bool {
+	_, err := exec.LookPath("systemctl")
+	if err != nil {
+		return false
+	}
+
+	cmd := exec.Command("systemctl", "list-unit-files", "soft-reboot.target")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+
+	return strings.Contains(stdout.String(), "soft-reboot.target")
 }

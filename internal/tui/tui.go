@@ -502,8 +502,22 @@ func (m model) View() string {
 		body += "\nSpace toggle · Enter review · Esc back"
 	case saveReview:
 		body = "Files to include in theme " + m.name.Value() + "\n\n"
+		shown := make(map[string]bool)
+		for i, selected := range m.selected {
+			if !selected {
+				continue
+			}
+			d := m.modules[i]
+			if info, err := os.Lstat(d.Source); err == nil && info.IsDir() {
+				folder := "files/" + d.Name + "/"
+				body += "• " + folder + " (folder and contents)\n"
+				shown[d.Name] = true
+			}
+		}
 		for _, file := range m.saveFiles {
-			body += "• " + file.StoredPath + "\n"
+			if !shown[file.Module] {
+				body += "• " + file.StoredPath + "\n"
+			}
 		}
 		body += "\nSave theme " + m.name.Value() + "?  Enter/y yes · n cancel · Esc back"
 		if m.message != "" {

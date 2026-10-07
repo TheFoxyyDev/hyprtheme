@@ -21,17 +21,26 @@ type Definition struct {
 }
 
 func Defaults() []Definition {
+	home := os.Getenv("HOME")
+	if home == "" {
+		home, _ = os.UserHomeDir()
+	}
+
 	config := os.Getenv("XDG_CONFIG_HOME")
 	if config == "" {
-		home, _ := os.UserHomeDir()
 		config = filepath.Join(home, ".config")
 	}
-	base := filepath.Join(config, "hypr")
+
+	hyprConfig := filepath.Join(config, "hypr")
 	return []Definition{
-		{Name: "hyprland", Label: "Hyprland (.conf)", Source: filepath.Join(base, "hyprland.conf"), Destination: filepath.Join(base, "hyprland.conf")},
-		{Name: "hyprland-lua", Label: "Hyprland (.lua)", Source: filepath.Join(base, "hyprland.lua"), Destination: filepath.Join(base, "hyprland.lua")},
-		{Name: "hyprpaper", Label: "hyprpaper", Source: filepath.Join(base, "hyprpaper.conf"), Destination: filepath.Join(base, "hyprpaper.conf")},
-		{Name: "hyprlock", Label: "hyprlock", Source: filepath.Join(base, "hyprlock.conf"), Destination: filepath.Join(base, "hyprlock.conf")},
+		{Name: "hyprland", Label: "Hyprland (.conf)", Source: filepath.Join(hyprConfig, "hyprland.conf"), Destination: filepath.Join(hyprConfig, "hyprland.conf")},
+		{Name: "hyprland-lua", Label: "Hyprland (.lua)", Source: filepath.Join(hyprConfig, "hyprland.lua"), Destination: filepath.Join(hyprConfig, "hyprland.lua")},
+		{Name: "hyprpaper", Label: "Hyprpaper", Source: filepath.Join(hyprConfig, "hyprpaper.conf"), Destination: filepath.Join(hyprConfig, "hyprpaper.conf")},
+		{Name: "hyprlock", Label: "Hyprlock", Source: filepath.Join(hyprConfig, "hyprlock.conf"), Destination: filepath.Join(hyprConfig, "hyprlock.conf")},
+		{Name: "waybar", Label: "Waybar", Source: filepath.Join(config, "waybar"), Destination: filepath.Join(config, "waybar")},
+		{Name: "swaync", Label: "SwayNC", Source: filepath.Join(config, "swaync"), Destination: filepath.Join(config, "swaync")},
+		{Name: "kitty", Label: "Kitty", Source: filepath.Join(config, "kitty"), Destination: filepath.Join(config, "kitty")},
+		{Name: "wlogout", Label: "Wlogout", Source: filepath.Join(config, "wlogout"), Destination: filepath.Join(config, "wlogout")},
 	}
 }
 
